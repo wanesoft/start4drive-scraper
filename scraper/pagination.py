@@ -24,7 +24,9 @@ async def scrape_test(page: Page) -> AsyncGenerator[dict, None]:
         qid = data.get("question_id")
 
         if qid and qid in seen_ids:
-            print(f"[stop] Cycle detected at index {index} (question_id={qid} already seen)")
+            print(
+                f"[stop] Cycle detected at index {index} (question_id={qid} already seen)"
+            )
             return
         if qid:
             seen_ids.add(qid)

@@ -30,9 +30,15 @@ async def run(output_dir: str, headless: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scrape start4drive.com.ar exam questions")
-    parser.add_argument("--output-dir", default="output", help="Directory for JSON output")
-    parser.add_argument("--headed", action="store_true", help="Run browser in headed mode")
+    parser = argparse.ArgumentParser(
+        description="Scrape start4drive.com.ar exam questions"
+    )
+    parser.add_argument(
+        "--output-dir", default="output", help="Directory for JSON output"
+    )
+    parser.add_argument(
+        "--headed", action="store_true", help="Run browser in headed mode"
+    )
     args = parser.parse_args()
 
     asyncio.run(run(args.output_dir, headless=not args.headed))

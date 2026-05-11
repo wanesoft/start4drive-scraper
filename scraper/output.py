@@ -2,7 +2,9 @@ import json
 import os
 
 
-def write_progress(questions: list[dict], test_id: str, scraped_at: str, output_dir: str) -> str:
+def write_progress(
+    questions: list[dict], test_id: str, scraped_at: str, output_dir: str
+) -> str:
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, f"{test_id}.json")
 
