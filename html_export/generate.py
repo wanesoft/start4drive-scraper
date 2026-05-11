@@ -35,7 +35,9 @@ def build_image_map(data: dict) -> dict[str, str]:
             if not url:
                 continue
             existing = image_map.get(qid)
-            if existing is None or (not existing.startswith("data:") and url.startswith("data:")):
+            if existing is None or (
+                not existing.startswith("data:") and url.startswith("data:")
+            ):
                 image_map[qid] = url
     return image_map
 
@@ -43,7 +45,9 @@ def build_image_map(data: dict) -> dict[str, str]:
 def download_images(image_map: dict[str, str], assets_dir: Path) -> None:
     """Download path-based images to assets_dir; update image_map in place to local paths."""
     assets_dir.mkdir(parents=True, exist_ok=True)
-    path_entries = [(qid, url) for qid, url in image_map.items() if not url.startswith("data:")]
+    path_entries = [
+        (qid, url) for qid, url in image_map.items() if not url.startswith("data:")
+    ]
     total = len(path_entries)
     for i, (qid, url) in enumerate(path_entries, 1):
         filename = Path(url).name
@@ -86,7 +90,10 @@ def render_question(q: dict, image_map: dict[str, str]) -> str:
 
 def render_html(data: dict, image_map: dict[str, str]) -> str:
     langs = [k for k in data if not k.startswith("_meta_")]
-    langs_sorted = sorted(langs, key=lambda l: list(LANG_LABELS).index(l) if l in LANG_LABELS else 99)
+    langs_sorted = sorted(
+        langs,
+        key=lambda lang: list(LANG_LABELS).index(lang) if lang in LANG_LABELS else 99,
+    )
 
     tabs_html = ""
     panels_html = ""
@@ -100,7 +107,9 @@ def render_html(data: dict, image_map: dict[str, str]) -> str:
         questions = data[lang]
         questions_html = "\n".join(render_question(q, image_map) for q in questions)
 
-        tabs_html += f'<button class="tab{active_tab}" data-lang="{lang}">{label}</button>\n'
+        tabs_html += (
+            f'<button class="tab{active_tab}" data-lang="{lang}">{label}</button>\n'
+        )
         panels_html += f"""<div class="panel{active_panel}" id="panel-{lang}">
   <div class="meta">
     Test ID: <strong>{escape(str(meta.get("test_id", "")))}</strong> &nbsp;|&nbsp;
@@ -158,9 +167,17 @@ def render_html(data: dict, image_map: dict[str, str]) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate HTML from scraped question JSON files.")
-    parser.add_argument("--output-dir", default="output", help="Directory with language subdirs")
-    parser.add_argument("--html-out", default=None, help="Output HTML path (default: <output-dir>/index.html)")
+    parser = argparse.ArgumentParser(
+        description="Generate HTML from scraped question JSON files."
+    )
+    parser.add_argument(
+        "--output-dir", default="output", help="Directory with language subdirs"
+    )
+    parser.add_argument(
+        "--html-out",
+        default=None,
+        help="Output HTML path (default: <output-dir>/index.html)",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)

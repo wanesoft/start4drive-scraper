@@ -47,9 +47,11 @@ async def _get_question_text(page: Page, language: str) -> str:
             "els => els.map(e => e.innerText.trim())",
         )
     else:
+        # Skip spans that contain span.A2oEfun8 — those are service-word markers ("Служ.")
+        # used by the site to indicate untranslatable function words (articles, prepositions).
         parts = await page.eval_on_selector_all(
             f"{QUESTION_SELECTOR} {_TRANS_SEL}",
-            "els => els.map(e => e.textContent.trim())",
+            "els => els.filter(e => !e.querySelector('span.A2oEfun8')).map(e => e.textContent.trim())",
         )
     return " ".join(p for p in parts if p)
 
@@ -73,7 +75,7 @@ async def _get_options_with_correct(
     else:
         raw = await page.eval_on_selector_all(
             "li",
-            f"els => els.map(e => {{ const spans = [...e.querySelectorAll('{_TRANS_SEL}')]; return spans.length ? spans.map(s => s.textContent.trim()).filter(Boolean).join(' ') : null; }})",
+            f"els => els.map(e => {{ const spans = [...e.querySelectorAll('{_TRANS_SEL}')].filter(s => !s.querySelector('span.A2oEfun8')); return spans.length ? spans.map(s => s.textContent.trim()).filter(Boolean).join(' ') : null; }})",
         )
     option_texts = [t for t in raw if t]
 
