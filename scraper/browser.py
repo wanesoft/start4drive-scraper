@@ -24,12 +24,9 @@ async def launch_browser(headless: bool = True):
 
 
 async def initialize_session(page: Page) -> str:
-    """Navigate home → dashboard → start new test. Returns test URL."""
     await page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
-    # Dismiss welcome screen
     await page.evaluate("document.querySelector('button').click()")
     await page.wait_for_url("**/dashboard", timeout=10_000)
-    # Start new test
     await page.evaluate(
         "([...document.querySelectorAll('button')]"
         ".find(b => b.innerText.includes('New test')) || {}).click?.()"
@@ -48,7 +45,6 @@ async def wait_for_question(page: Page, timeout: int = 10_000) -> bool:
 
 
 async def click_next(page: Page) -> bool:
-    """Click the next-question arrow. Returns False if button absent/disabled."""
     btn = await page.query_selector(NEXT_BTN_SELECTOR)
     if not btn:
         return False

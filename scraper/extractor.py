@@ -47,7 +47,6 @@ async def _get_image_url(page: Page, question_id: str | None) -> str | None:
 
 
 async def _get_options_with_correct(page: Page) -> tuple[list[dict], int | None]:
-    # Read option texts before answering
     raw = await page.eval_on_selector_all(
         "li",
         "els => els.map(e => { const s = e.querySelector('span.qDW3uMC9'); return s ? s.innerText.trim() : null; })",
@@ -57,7 +56,6 @@ async def _get_options_with_correct(page: Page) -> tuple[list[dict], int | None]
     if not option_texts:
         return [], None
 
-    # Select first radio and click Verify to reveal correct answer
     await page.evaluate("document.querySelector('input.Phvp4eQ3').click()")
     await asyncio.sleep(0.2)
     await page.evaluate(
@@ -66,7 +64,6 @@ async def _get_options_with_correct(page: Page) -> tuple[list[dict], int | None]
     )
     await asyncio.sleep(0.8)
 
-    # Read LI classes after verification
     li_classes = await page.eval_on_selector_all(
         "li",
         "els => els.filter(e => e.querySelector('span.qDW3uMC9')).map(e => e.className)",

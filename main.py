@@ -1,9 +1,10 @@
 import argparse
 import asyncio
+from datetime import datetime, timezone
 
 from scraper.browser import launch_browser, initialize_session
 from scraper.pagination import scrape_test
-from scraper.output import save_results
+from scraper.output import write_progress
 
 
 async def run(output_dir: str, headless: bool) -> None:
@@ -13,8 +14,14 @@ async def run(output_dir: str, headless: bool) -> None:
         test_id = test_url.split("/test/")[1].split("/")[0]
         print(f"Session started: test_id={test_id}")
 
-        questions = await scrape_test(page)
-        path = save_results(questions, test_id, output_dir)
+        scraped_at = datetime.now(timezone.utc).isoformat()
+        questions: list[dict] = []
+        path = ""
+
+        async for question in scrape_test(page):
+            questions.append(question)
+            path = write_progress(questions, test_id, scraped_at, output_dir)
+
         print(f"\nDone. {len(questions)} questions saved to {path}")
     finally:
         await context.close()
