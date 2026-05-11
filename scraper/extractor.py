@@ -2,15 +2,25 @@ import asyncio
 from playwright.async_api import Page
 from .browser import QUESTION_SELECTOR, RADIO_SELECTOR, CORRECT_CLS
 
+# ES UI: question/option text is in a flat div.Qe5J54-r node (innerText, visible).
+# EN/RU UI: each word is wrapped in span.LGdSgx4z containing:
+#   span.qDW3uMC9 (original Spanish, visible) and span.vK65g4nl (translation, CSS-hidden).
+# To get translated text we must use textContent (not innerText) on span.vK65g4nl.
+_ES_TEXT_SEL = "div.Qe5J54-r"
+_TRANS_SEL = "span.vK65g4nl"
+_VERIFY_LABELS = ["Verify", "Verificar", "Проверить"]
 
-async def extract_question(page: Page, question_index: int) -> dict | None:
+
+async def extract_question(
+    page: Page, question_index: int, language: str = "es"
+) -> dict | None:
     if not await page.query_selector(QUESTION_SELECTOR):
         return None
 
     question_id = await _get_question_id(page)
-    text = await _get_question_text(page)
+    text = await _get_question_text(page, language)
     image_url = await _get_image_url(page, question_id)
-    options, correct_index = await _get_options_with_correct(page)
+    options, correct_index = await _get_options_with_correct(page, language)
 
     return {
         "question_index": question_index,
@@ -30,11 +40,17 @@ async def _get_question_id(page: Page) -> str | None:
     return None
 
 
-async def _get_question_text(page: Page) -> str:
-    parts = await page.eval_on_selector_all(
-        f"{QUESTION_SELECTOR} span.qDW3uMC9",
-        "els => els.map(e => e.innerText.trim())",
-    )
+async def _get_question_text(page: Page, language: str) -> str:
+    if language == "es":
+        parts = await page.eval_on_selector_all(
+            f"{QUESTION_SELECTOR} {_ES_TEXT_SEL}",
+            "els => els.map(e => e.innerText.trim())",
+        )
+    else:
+        parts = await page.eval_on_selector_all(
+            f"{QUESTION_SELECTOR} {_TRANS_SEL}",
+            "els => els.map(e => e.textContent.trim())",
+        )
     return " ".join(p for p in parts if p)
 
 
@@ -46,11 +62,19 @@ async def _get_image_url(page: Page, question_id: str | None) -> str | None:
     return None
 
 
-async def _get_options_with_correct(page: Page) -> tuple[list[dict], int | None]:
-    raw = await page.eval_on_selector_all(
-        "li",
-        "els => els.map(e => { const s = e.querySelector('span.qDW3uMC9'); return s ? s.innerText.trim() : null; })",
-    )
+async def _get_options_with_correct(
+    page: Page, language: str
+) -> tuple[list[dict], int | None]:
+    if language == "es":
+        raw = await page.eval_on_selector_all(
+            "li",
+            f"els => els.map(e => {{ const s = e.querySelector('{_ES_TEXT_SEL}'); return s ? s.innerText.trim() : null; }})",
+        )
+    else:
+        raw = await page.eval_on_selector_all(
+            "li",
+            f"els => els.map(e => {{ const spans = [...e.querySelectorAll('{_TRANS_SEL}')]; return spans.length ? spans.map(s => s.textContent.trim()).filter(Boolean).join(' ') : null; }})",
+        )
     option_texts = [t for t in raw if t]
 
     if not option_texts:
@@ -59,14 +83,14 @@ async def _get_options_with_correct(page: Page) -> tuple[list[dict], int | None]
     await page.evaluate("document.querySelector('input.Phvp4eQ3').click()")
     await asyncio.sleep(0.2)
     await page.evaluate(
-        "([...document.querySelectorAll('button')]"
-        ".find(b => b.innerText.includes('Verify')) || {}).click?.()"
+        f"([...document.querySelectorAll('button')]"
+        f".find(b => {_VERIFY_LABELS!r}.some(t => b.innerText.includes(t))) || {{}}).click?.()"
     )
     await asyncio.sleep(0.8)
 
     li_classes = await page.eval_on_selector_all(
         "li",
-        "els => els.filter(e => e.querySelector('span.qDW3uMC9')).map(e => e.className)",
+        f"els => els.filter(e => e.querySelector('{_ES_TEXT_SEL}')).map(e => e.className)",
     )
 
     correct_index = None

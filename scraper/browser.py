@@ -23,13 +23,59 @@ async def launch_browser(headless: bool = True):
     return pw, browser, context, page
 
 
-async def initialize_session(page: Page) -> str:
+async def _js_click_by_text(page: Page, text: str) -> bool:
+    """Click the first leaf element whose innerText exactly matches `text` via JS."""
+    return await page.evaluate(
+        f"""(() => {{
+            const el = [...document.querySelectorAll('*')]
+                .find(e => e.children.length === 0 && e.innerText?.trim() === '{text}');
+            if (el) {{ el.click(); return true; }}
+            return false;
+        }})()"""
+    )
+
+
+_LANG_LABEL: dict[str, str] = {
+    "en": "En",
+    "es": "Es",
+    "ru": "Ру",  # Cyrillic — shown as "Ру" in the dashboard language picker
+}
+
+_NEW_TEST_LABELS = [
+    "New test",
+    "Nuevo test",
+    "Nuevo examen",
+    "Новый тест",
+    "Новий тест",
+]
+
+
+async def initialize_session(page: Page, language: str = "es") -> str:
     await page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30_000)
-    await page.evaluate("document.querySelector('button').click()")
-    await page.wait_for_url("**/dashboard", timeout=10_000)
+
+    # Step 1: accept terms ("Ok, let's go!" is the only <button> on the home page)
     await page.evaluate(
         "([...document.querySelectorAll('button')]"
-        ".find(b => b.innerText.includes('New test')) || {}).click?.()"
+        '.find(b => b.innerText.includes("let\'s go")) || {}).click?.()'
+    )
+    await page.wait_for_url("**/dashboard", timeout=10_000)
+
+    # Step 2: select language in the dashboard modal.
+    # The picker uses <div> elements (not <button>), blocked by a backdrop overlay,
+    # so we bypass with a direct JS .click() on the matching leaf node.
+    lang_label = _LANG_LABEL.get(language, language.capitalize())
+    await _js_click_by_text(page, lang_label)
+
+    # Language selection re-renders the dashboard; wait until buttons reappear
+    await page.wait_for_function(
+        "document.querySelectorAll('button').length > 0", timeout=15_000
+    )
+
+    # Step 3: click "New test" (label varies by language)
+    await page.evaluate(
+        f"([...document.querySelectorAll('button')]"
+        f".find(b => {_NEW_TEST_LABELS!r}.some(t => b.innerText.includes(t)))"
+        f" || {{}}).click?.()"
     )
     await page.wait_for_url("**/test/**", timeout=15_000)
     await page.wait_for_selector(QUESTION_SELECTOR, timeout=15_000)

@@ -3,14 +3,20 @@ import os
 
 
 def write_progress(
-    questions: list[dict], test_id: str, scraped_at: str, output_dir: str
+    questions: list[dict],
+    test_id: str,
+    scraped_at: str,
+    output_dir: str,
+    language: str = "es",
 ) -> str:
-    os.makedirs(output_dir, exist_ok=True)
-    path = os.path.join(output_dir, f"{test_id}.json")
+    lang_dir = os.path.join(output_dir, language)
+    os.makedirs(lang_dir, exist_ok=True)
+    path = os.path.join(lang_dir, f"{test_id}.json")
 
     payload = {
         "meta": {
             "test_id": test_id,
+            "language": language,
             "scraped_at": scraped_at,
             "total_questions": len(questions),
             "source_url": f"https://www.start4drive.com.ar/test/{test_id}/ordered/0",

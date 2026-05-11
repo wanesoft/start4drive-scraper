@@ -7,7 +7,7 @@ from .extractor import extract_question
 MAX_QUESTIONS = 1000
 
 
-async def scrape_test(page: Page) -> AsyncGenerator[dict, None]:
+async def scrape_test(page: Page, language: str = "es") -> AsyncGenerator[dict, None]:
     seen_ids: set[str] = set()
 
     for index in range(MAX_QUESTIONS):
@@ -16,7 +16,7 @@ async def scrape_test(page: Page) -> AsyncGenerator[dict, None]:
             print(f"[stop] Question element not found at index {index}")
             return
 
-        data = await extract_question(page, index)
+        data = await extract_question(page, index, language)
         if data is None:
             print(f"[stop] Extraction returned None at index {index}")
             return
