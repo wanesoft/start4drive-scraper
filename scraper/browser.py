@@ -7,6 +7,7 @@ OPTION_SELECTOR = "li"
 RADIO_SELECTOR = "input.Phvp4eQ3"
 NEXT_BTN_SELECTOR = "button.tWI-IRMI"
 CORRECT_CLS = "EcflB-k8"
+EYE_TOGGLE_SELECTOR = ".N6cjtZ0-"
 
 
 async def launch_browser(headless: bool = True):
@@ -79,6 +80,15 @@ async def initialize_session(page: Page, language: str = "es") -> str:
     )
     await page.wait_for_url("**/test/**", timeout=15_000)
     await page.wait_for_selector(QUESTION_SELECTOR, timeout=15_000)
+
+    # For EN/RU: enable full-sentence translation mode via the eye toggle in the header.
+    # The toggle replaces per-word Spanish with the translated sentence in h2.innerText.
+    if language != "es":
+        await page.evaluate(
+            f"(document.querySelector('{EYE_TOGGLE_SELECTOR}') || {{}}).click?.()"
+        )
+        await page.wait_for_timeout(300)
+
     return page.url
 
 

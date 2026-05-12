@@ -2,12 +2,7 @@ import asyncio
 from playwright.async_api import Page
 from .browser import QUESTION_SELECTOR, RADIO_SELECTOR, CORRECT_CLS
 
-# ES UI: question/option text is in a flat div.Qe5J54-r node (innerText, visible).
-# EN/RU UI: each word is wrapped in span.LGdSgx4z containing:
-#   span.qDW3uMC9 (original Spanish, visible) and span.vK65g4nl (translation, CSS-hidden).
-# To get translated text we must use textContent (not innerText) on span.vK65g4nl.
 _ES_TEXT_SEL = "div.Qe5J54-r"
-_TRANS_SEL = "span.vK65g4nl"
 _VERIFY_LABELS = ["Verify", "Verificar", "Проверить"]
 
 
@@ -46,14 +41,12 @@ async def _get_question_text(page: Page, language: str) -> str:
             f"{QUESTION_SELECTOR} {_ES_TEXT_SEL}",
             "els => els.map(e => e.innerText.trim())",
         )
+        return " ".join(p for p in parts if p)
     else:
-        # Skip spans that contain span.A2oEfun8 — those are service-word markers ("Служ.")
-        # used by the site to indicate untranslatable function words (articles, prepositions).
-        parts = await page.eval_on_selector_all(
-            f"{QUESTION_SELECTOR} {_TRANS_SEL}",
-            "els => els.filter(e => !e.querySelector('span.A2oEfun8')).map(e => e.textContent.trim())",
+        # After the eye toggle, h2.innerText yields the full translated sentence directly.
+        return await page.eval_on_selector(
+            QUESTION_SELECTOR, "el => el.innerText.trim()"
         )
-    return " ".join(p for p in parts if p)
 
 
 async def _get_image_url(page: Page, question_id: str | None) -> str | None:
@@ -67,16 +60,12 @@ async def _get_image_url(page: Page, question_id: str | None) -> str | None:
 async def _get_options_with_correct(
     page: Page, language: str
 ) -> tuple[list[dict], int | None]:
-    if language == "es":
-        raw = await page.eval_on_selector_all(
-            "li",
-            f"els => els.map(e => {{ const s = e.querySelector('{_ES_TEXT_SEL}'); return s ? s.innerText.trim() : null; }})",
-        )
-    else:
-        raw = await page.eval_on_selector_all(
-            "li",
-            f"els => els.map(e => {{ const spans = [...e.querySelectorAll('{_TRANS_SEL}')].filter(s => !s.querySelector('span.A2oEfun8')); return spans.length ? spans.map(s => s.textContent.trim()).filter(Boolean).join(' ') : null; }})",
-        )
+    # After the eye toggle (EN/RU) or in ES mode, div.Qe5J54-r.innerText gives the
+    # visible option text in the active language.
+    raw = await page.eval_on_selector_all(
+        "li",
+        f"els => els.map(e => {{ const s = e.querySelector('{_ES_TEXT_SEL}'); return s ? s.innerText.trim() : null; }})",
+    )
     option_texts = [t for t in raw if t]
 
     if not option_texts:
